@@ -23,10 +23,17 @@ class _SearchPageState extends State<SearchPage> {
     final current = wp.searchWeather;
     final forecast = wp.searchForecast;
 
-    // Summaries & slots from provider
-    final days = wp.firstFiveDays(source: forecast);
-    final dailySummaries = days.map((d) => wp.daySummary(d, source: forecast)).toList();
+    // ----- Horizontal 5-hour slots -----
     final slots = wp.nextSlots(5, source: forecast);
+
+    // ----- Vertical 5-day forecast -----
+    final dailyForecast = forecast != null
+        ? wp.groupByDay(source: forecast)
+            .entries
+            .take(5)
+            .map((e) => e.value.first)
+            .toList()
+        : <dynamic>[];
 
     return Scaffold(
       backgroundColor: const Color(0xFF07233B),
@@ -36,7 +43,6 @@ class _SearchPageState extends State<SearchPage> {
           child: Column(
             children: [
               const AppHeader(title: "Search Weather", showBack: true),
-
               const SizedBox(height: 10),
 
               // ---- Search Box ----
@@ -75,11 +81,11 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                   child: Row(
                     children: [
-                     const Image(
-                          image: AssetImage('lib/images/four.png'),
-                          height: 120,
-                          width: 120,
-                        ),
+                      const Image(
+                        image: AssetImage('lib/images/four.png'),
+                        height: 120,
+                        width: 120,
+                      ),
                       const SizedBox(width: 15),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,18 +101,20 @@ class _SearchPageState extends State<SearchPage> {
                   ),
                 ),
 
-              // ---- HORIZONTAL 5-CARDS ----
+              // ---- HORIZONTAL 5-HOUR SLOTS ----
               if (!isLoading && forecast != null)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: slots.map((slot) {
-                    String time = DateFormat('HH:mm').format(slot.dateTime);
-                    String condition = slot.condition;
-                    String iconUrl =
-                        'https://openweathermap.org/img/wn/${slot.icon}@2x.png';
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: slots.map((slot) {
+                      String time = DateFormat('HH:mm').format(slot.dateTime);
+                      String condition = slot.condition;
+                      String iconUrl =
+                          'https://openweathermap.org/img/wn/${slot.icon}@2x.png';
+                      String temp = '${slot.temp.toStringAsFixed(1)}°C';
 
-                    return Expanded(
-                      child: Container(
+                      return Container(
+                        width: 80,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
@@ -123,29 +131,35 @@ class _SearchPageState extends State<SearchPage> {
                             const SizedBox(height: 8),
                             Image.network(iconUrl, height: 35, width: 35),
                             const SizedBox(height: 8),
+                            Text(temp,
+                                style: GoogleFonts.roboto(
+                                    color: Colors.white, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
                             Text(condition,
                                 textAlign: TextAlign.center,
                                 style: GoogleFonts.roboto(
                                     color: Colors.white,
-                                    fontWeight: FontWeight.bold)),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12)),
                           ],
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
 
               const SizedBox(height: 20),
 
-              // ---- VERTICAL NEXT 5 FORECAST SLOTS ----
-              if (!isLoading && forecast != null)
+              // ---- VERTICAL 5-DAY FORECAST ----
+              if (!isLoading && dailyForecast.isNotEmpty)
                 Column(
-                  children: slots.take(5).map((slot) {
-                    String dayLabel = DateFormat('EEE, MMM d').format(slot.dateTime);
+                  children: dailyForecast.map((f) {
+                    String dayLabel =
+                        DateFormat('EEE, MMM d').format(f.dateTime);
                     String iconUrl =
-                        'https://openweathermap.org/img/wn/${slot.icon}@2x.png';
-                    String condition = slot.condition;
-                    String temp = '${slot.temp.toStringAsFixed(1)}°C';
+                        'https://openweathermap.org/img/wn/${f.icon}@2x.png';
+                    String condition = f.condition;
+                    String temp = '${f.temp.toStringAsFixed(1)}°C';
 
                     return Container(
                       padding: const EdgeInsets.all(12),
@@ -175,7 +189,8 @@ class _SearchPageState extends State<SearchPage> {
                           const Spacer(),
                           Text(temp,
                               style: GoogleFonts.roboto(
-                                  color: Colors.white, fontWeight: FontWeight.bold)),
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold)),
                         ],
                       ),
                     );
@@ -183,7 +198,6 @@ class _SearchPageState extends State<SearchPage> {
                 ),
 
               const SizedBox(height: 30),
-
               Text(
                 "OpenWeatherMap",
                 style: GoogleFonts.roboto(
@@ -192,7 +206,6 @@ class _SearchPageState extends State<SearchPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 20),
             ],
           ),

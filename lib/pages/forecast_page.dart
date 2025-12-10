@@ -8,6 +8,7 @@ import 'package:openweathermap/services/wprovider.dart';
 
 class ForecastPage extends StatefulWidget {
   const ForecastPage({super.key});
+
   @override
   State<ForecastPage> createState() => _ForecastPageState();
 }
@@ -18,8 +19,15 @@ class _ForecastPageState extends State<ForecastPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final wp = Provider.of<Wprovider>(context);
 
-    // Limit to first 5 hourly forecasts
-    final hourlyForecast = wp.nextSlots(5);
+    // ----- Horizontal Hourly Forecast (next 12 hours) -----
+    final hourlyForecast = wp.nextSlots(12);
+
+    // ----- Vertical 5-Day Forecast -----
+    final dailyForecast = wp.groupByDay()
+        .entries
+        .take(5) // first 5 days
+        .map((e) => e.value.first) // pick first forecast of the day as summary
+        .toList();
 
     return Scaffold(
       body: SafeArea(
@@ -33,23 +41,26 @@ class _ForecastPageState extends State<ForecastPage> {
                 const AppHeader(title: "Weather Forecast", showBack: true),
                 const SizedBox(height: 20),
 
+                // ----- Horizontal Hourly Forecast -----
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: Row(
                     children: hourlyForecast.map((f) {
                       final time = DateFormat('HH:mm').format(f.dateTime);
-                      final condition = f.condition;
                       final iconCode = f.icon;
+                      final temp = '${f.temp.toStringAsFixed(1)}°C';
+                      final condition = f.condition;
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4),
                         child: ModernForecastCard(
-                          day: time, // time
-                          temp: condition, 
+                          day: time,
+                          temp: temp,
                           condition: condition,
-                          iconPath: 'https://openweathermap.org/img/wn/$iconCode.png',
-                          width: 60, 
+                          iconPath:
+                              'https://openweathermap.org/img/wn/$iconCode.png',
+                          width: 70,
                         ),
                       );
                     }).toList(),
@@ -58,17 +69,19 @@ class _ForecastPageState extends State<ForecastPage> {
 
                 const SizedBox(height: 20),
 
+                // ----- Vertical 5-Day Forecast -----
                 Column(
-                  children: hourlyForecast.map((f) {
-                    final dayTime = DateFormat('EEE HH:mm').format(f.dateTime);
-                    final condition = f.condition;
+                  children: dailyForecast.map((f) {
+                    final day = DateFormat('EEE, MMM d').format(f.dateTime);
                     final iconCode = f.icon;
                     final temp = '${f.temp.toStringAsFixed(1)}°C';
+                    final condition = f.condition;
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 4, horizontal: 16),
                       child: HourlyForecastCard(
-                        dayTime: dayTime,
+                        dayTime: day,
                         condition: condition,
                         iconCode: iconCode,
                         temp: temp,
@@ -80,6 +93,7 @@ class _ForecastPageState extends State<ForecastPage> {
 
                 const SizedBox(height: 20),
 
+                // ----- Search Button -----
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: ActionButton(
@@ -88,7 +102,8 @@ class _ForecastPageState extends State<ForecastPage> {
                     onTap: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const SearchPage()),
+                        MaterialPageRoute(
+                            builder: (context) => const SearchPage()),
                       );
                     },
                   ),
@@ -127,30 +142,30 @@ class ModernForecastCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white24),
       ),
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(6),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            day, // time
+            day,
             style: GoogleFonts.roboto(
               color: Colors.white70,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 6),
           Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white.withOpacity(0.3),
             ),
-            padding: const EdgeInsets.all(4),
-            child: Image.network(iconPath, height: 30, width: 30), // icon
+            padding: const EdgeInsets.all(6),
+            child: Image.network(iconPath, height: 40, width: 40),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(
-            temp, // weather condition
+            temp,
             style: GoogleFonts.roboto(
               color: Colors.white,
               fontSize: 14,
@@ -164,7 +179,7 @@ class ModernForecastCard extends StatelessWidget {
   }
 }
 
-// ----- Vertical Hourly Forecast Card -----
+// ----- Vertical Daily Forecast Card -----
 class HourlyForecastCard extends StatelessWidget {
   final String dayTime, condition, iconCode, temp;
   final double width;
@@ -182,7 +197,7 @@ class HourlyForecastCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: width,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
@@ -192,15 +207,15 @@ class HourlyForecastCard extends StatelessWidget {
         children: [
           Image.network(
             'https://openweathermap.org/img/wn/$iconCode.png',
-            height: 40,
-            width: 40,
+            height: 50,
+            width: 50,
           ),
           const SizedBox(width: 10),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                dayTime, // e.g., Mon 12:00
+                dayTime,
                 style: GoogleFonts.roboto(
                   color: Colors.white70,
                   fontSize: 14,
@@ -216,7 +231,7 @@ class HourlyForecastCard extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            temp, 
+            temp,
             style: GoogleFonts.roboto(
               color: Colors.white,
               fontSize: 14,
